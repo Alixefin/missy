@@ -1,0 +1,1103 @@
+"use client";
+
+import { useState, useEffect, useRef } from "react";
+import { useQuery, useMutation } from "convex/react";
+import { api } from "../../../../convex/_generated/api";
+import { useRouter } from "next/navigation";
+import {
+    User,
+    FileText,
+    Share2,
+    Award,
+    CreditCard,
+    ShoppingBag,
+    Settings,
+    LogOut,
+    ExternalLink,
+    Plus,
+    Trash2,
+    Edit3,
+    Upload,
+    Save,
+    X,
+    ImageIcon,
+} from "lucide-react";
+import Image from "next/image";
+
+type Tab = "profile" | "about" | "social" | "brands" | "ratecard" | "products" | "settings";
+
+interface RateItem {
+    service: string;
+    price: string;
+    description?: string;
+}
+
+export default function AdminDashboard() {
+    const router = useRouter();
+    const [activeTab, setActiveTab] = useState<Tab>("profile");
+    const [saveMessage, setSaveMessage] = useState("");
+
+    // Auth check
+    useEffect(() => {
+        const token = localStorage.getItem("missy_admin_token");
+        if (!token) {
+            router.push("/admin");
+        }
+    }, [router]);
+
+    const handleLogout = () => {
+        localStorage.removeItem("missy_admin_token");
+        router.push("/admin");
+    };
+
+    const showSaveMessage = (msg: string = "Changes saved!") => {
+        setSaveMessage(msg);
+        setTimeout(() => setSaveMessage(""), 3000);
+    };
+
+    const tabs: { key: Tab; label: string; icon: React.ReactNode }[] = [
+        { key: "profile", label: "Profile", icon: <User size={16} /> },
+        { key: "about", label: "About", icon: <FileText size={16} /> },
+        { key: "social", label: "Social", icon: <Share2 size={16} /> },
+        { key: "brands", label: "Brands", icon: <Award size={16} /> },
+        { key: "ratecard", label: "Rates", icon: <CreditCard size={16} /> },
+        { key: "products", label: "Products", icon: <ShoppingBag size={16} /> },
+        { key: "settings", label: "Settings", icon: <Settings size={16} /> },
+    ];
+
+    return (
+        <div className="admin-container">
+            {saveMessage && <div className="save-success">{saveMessage}</div>}
+
+            <div className="admin-header">
+                <h1 className="admin-header-title">Dashboard</h1>
+                <div className="admin-header-actions">
+                    <a href="/" target="_blank" className="admin-header-link">
+                        <ExternalLink size={14} style={{ display: "inline", marginRight: 4 }} />
+                        View Site
+                    </a>
+                    <button className="admin-logout-btn" onClick={handleLogout}>
+                        <LogOut size={14} style={{ display: "inline", marginRight: 4 }} />
+                        Logout
+                    </button>
+                </div>
+            </div>
+
+            <div className="admin-tabs">
+                {tabs.map((tab) => (
+                    <button
+                        key={tab.key}
+                        className={`admin-tab ${activeTab === tab.key ? "active" : ""}`}
+                        onClick={() => setActiveTab(tab.key)}
+                    >
+                        {tab.icon}
+                        <span style={{ marginLeft: 6 }}>{tab.label}</span>
+                    </button>
+                ))}
+            </div>
+
+            <div className="admin-panel">
+                {activeTab === "profile" && <ProfilePanel onSave={showSaveMessage} />}
+                {activeTab === "about" && <AboutPanel onSave={showSaveMessage} />}
+                {activeTab === "social" && <SocialPanel onSave={showSaveMessage} />}
+                {activeTab === "brands" && <BrandsPanel onSave={showSaveMessage} />}
+                {activeTab === "ratecard" && <RateCardPanel onSave={showSaveMessage} />}
+                {activeTab === "products" && <ProductsPanel onSave={showSaveMessage} />}
+                {activeTab === "settings" && <SettingsPanel onSave={showSaveMessage} />}
+            </div>
+        </div>
+    );
+}
+
+// ===== PROFILE PANEL =====
+function ProfilePanel({ onSave }: { onSave: (msg?: string) => void }) {
+    const settings = useQuery(api.siteSettings.get);
+    const updateSettings = useMutation(api.siteSettings.update);
+    const generateUploadUrl = useMutation(api.admin.generateUploadUrl);
+    const [brandName, setBrandName] = useState("");
+    const [tagline, setTagline] = useState("");
+    const [uploading, setUploading] = useState(false);
+    const [uploadingHomeLogo, setUploadingHomeLogo] = useState(false);
+    const [uploadingLoadingImage, setUploadingLoadingImage] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const homeLogoInputRef = useRef<HTMLInputElement>(null);
+    const loadingImageInputRef = useRef<HTMLInputElement>(null);
+
+    useEffect(() => {
+        if (settings) {
+            setBrandName(settings.brandName || "");
+            setTagline(settings.tagline || "");
+        }
+    }, [settings]);
+
+    const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setUploading(true);
+        try {
+            const uploadUrl = await generateUploadUrl();
+            const result = await fetch(uploadUrl, {
+                method: "POST",
+                headers: { "Content-Type": file.type },
+                body: file,
+            });
+            const { storageId } = await result.json();
+            await updateSettings({ profileImage: storageId });
+            onSave("Profile image updated!");
+        } catch (err) {
+            console.error("Upload failed:", err);
+        } finally {
+            setUploading(false);
+        }
+    };
+
+    const handleHomeLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setUploadingHomeLogo(true);
+        try {
+            const uploadUrl = await generateUploadUrl();
+            const result = await fetch(uploadUrl, {
+                method: "POST",
+                headers: { "Content-Type": file.type },
+                body: file,
+            });
+            const { storageId } = await result.json();
+            await updateSettings({ homeLogo: storageId });
+            onSave("Home logo updated!");
+        } catch (err) {
+            console.error("Upload failed:", err);
+        } finally {
+            setUploadingHomeLogo(false);
+        }
+    };
+
+    const handleLoadingImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setUploadingLoadingImage(true);
+        try {
+            const uploadUrl = await generateUploadUrl();
+            const result = await fetch(uploadUrl, {
+                method: "POST",
+                headers: { "Content-Type": file.type },
+                body: file,
+            });
+            const { storageId } = await result.json();
+            await updateSettings({ loadingImage: storageId });
+            onSave("Loading image updated!");
+        } catch (err) {
+            console.error("Upload failed:", err);
+        } finally {
+            setUploadingLoadingImage(false);
+        }
+    };
+
+    const handleSave = async () => {
+        await updateSettings({ brandName, tagline });
+        onSave();
+    };
+
+    return (
+        <div>
+            <h2 className="admin-panel-title">Profile Settings</h2>
+
+            <div className="admin-field">
+                <label>Profile Image</label>
+                <div
+                    className="image-upload-area"
+                    onClick={() => fileInputRef.current?.click()}
+                >
+                    {settings?.profileImageUrl ? (
+                        <img
+                            src={settings.profileImageUrl}
+                            alt="Profile"
+                            className="image-upload-preview"
+                            style={{ borderRadius: "50%" }}
+                        />
+                    ) : (
+                        <ImageIcon size={32} style={{ color: "var(--color-primary-light)", marginBottom: 8 }} />
+                    )}
+                    <p className="image-upload-text">
+                        {uploading ? "Uploading..." : "Click to upload profile image"}
+                    </p>
+                    <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/*"
+                        onChange={handleImageUpload}
+                        style={{ display: "none" }}
+                    />
+                </div>
+            </div>
+
+            <div className="admin-field">
+                <label>Home Logo (under profile picture)</label>
+                <div
+                    className="image-upload-area"
+                    onClick={() => homeLogoInputRef.current?.click()}
+                >
+                    {settings?.homeLogoUrl ? (
+                        <img
+                            src={settings.homeLogoUrl}
+                            alt="Home Logo"
+                            className="image-upload-preview"
+                            style={{ objectFit: "contain", maxHeight: "100px" }}
+                        />
+                    ) : (
+                        <ImageIcon size={32} style={{ color: "var(--color-primary-light)", marginBottom: 8 }} />
+                    )}
+                    <p className="image-upload-text">
+                        {uploadingHomeLogo ? "Uploading..." : "Click to upload homepage logo"}
+                    </p>
+                    <input
+                        ref={homeLogoInputRef}
+                        type="file"
+                        accept="image/*"
+                        onChange={handleHomeLogoUpload}
+                        style={{ display: "none" }}
+                    />
+                </div>
+            </div>
+
+            <div className="admin-field">
+                <label>Loading Screen Image</label>
+                <div
+                    className="image-upload-area"
+                    onClick={() => loadingImageInputRef.current?.click()}
+                >
+                    {settings?.loadingImageUrl ? (
+                        <img
+                            src={settings.loadingImageUrl}
+                            alt="Loading Image"
+                            className="image-upload-preview"
+                            style={{ objectFit: "contain", maxHeight: "100px" }}
+                        />
+                    ) : (
+                        <ImageIcon size={32} style={{ color: "var(--color-primary-light)", marginBottom: 8 }} />
+                    )}
+                    <p className="image-upload-text">
+                        {uploadingLoadingImage ? "Uploading..." : "Click to upload loading screen image"}
+                    </p>
+                    <input
+                        ref={loadingImageInputRef}
+                        type="file"
+                        accept="image/*"
+                        onChange={handleLoadingImageUpload}
+                        style={{ display: "none" }}
+                    />
+                </div>
+            </div>
+
+            <div className="admin-field">
+                <label>Brand Name</label>
+                <input
+                    type="text"
+                    value={brandName}
+                    onChange={(e) => setBrandName(e.target.value)}
+                    placeholder="Enter brand name"
+                />
+            </div>
+
+            <div className="admin-field">
+                <label>Tagline</label>
+                <input
+                    type="text"
+                    value={tagline}
+                    onChange={(e) => setTagline(e.target.value)}
+                    placeholder="Enter tagline"
+                />
+            </div>
+
+            <button className="admin-save-btn" onClick={handleSave}>
+                <Save size={16} style={{ display: "inline", marginRight: 6 }} />
+                Save Changes
+            </button>
+        </div>
+    );
+}
+
+// ===== ABOUT PANEL =====
+function AboutPanel({ onSave }: { onSave: (msg?: string) => void }) {
+    const settings = useQuery(api.siteSettings.get);
+    const updateSettings = useMutation(api.siteSettings.update);
+    const [aboutText, setAboutText] = useState("");
+
+    useEffect(() => {
+        if (settings) {
+            setAboutText(settings.aboutText || "");
+        }
+    }, [settings]);
+
+    const handleSave = async () => {
+        await updateSettings({ aboutText });
+        onSave();
+    };
+
+    return (
+        <div>
+            <h2 className="admin-panel-title">About Section</h2>
+            <div className="admin-field">
+                <label>About Text</label>
+                <textarea
+                    rows={6}
+                    value={aboutText}
+                    onChange={(e) => setAboutText(e.target.value)}
+                    placeholder="Write about yourself..."
+                />
+            </div>
+            <button className="admin-save-btn" onClick={handleSave}>
+                <Save size={16} style={{ display: "inline", marginRight: 6 }} />
+                Save Changes
+            </button>
+        </div>
+    );
+}
+
+// ===== SOCIAL LINKS PANEL =====
+function SocialPanel({ onSave }: { onSave: (msg?: string) => void }) {
+    const links = useQuery(api.socialLinks.listAll);
+    const createLink = useMutation(api.socialLinks.create);
+    const updateLink = useMutation(api.socialLinks.update);
+    const removeLink = useMutation(api.socialLinks.remove);
+    const [showForm, setShowForm] = useState(false);
+    const [editId, setEditId] = useState<string | null>(null);
+    const [platform, setPlatform] = useState("");
+    const [url, setUrl] = useState("");
+
+    const platforms = ["Instagram", "TikTok", "YouTube", "Twitter", "Facebook", "LinkedIn", "WhatsApp", "Website"];
+
+    const resetForm = () => {
+        setPlatform("");
+        setUrl("");
+        setEditId(null);
+        setShowForm(false);
+    };
+
+    const handleSave = async () => {
+        if (editId) {
+            await updateLink({ id: editId as any, platform, url });
+        } else {
+            await createLink({
+                platform,
+                url,
+                order: (links?.length || 0) + 1,
+                isActive: true,
+            });
+        }
+        resetForm();
+        onSave();
+    };
+
+    const handleEdit = (link: any) => {
+        setPlatform(link.platform);
+        setUrl(link.url);
+        setEditId(link._id);
+        setShowForm(true);
+    };
+
+    const handleDelete = async (id: any) => {
+        await removeLink({ id });
+        onSave("Link deleted!");
+    };
+
+    return (
+        <div>
+            <h2 className="admin-panel-title">Social Links</h2>
+
+            {links?.map((link) => (
+                <div key={link._id} className="admin-list-item">
+                    <div className="admin-list-item-info">
+                        <div className="admin-list-item-text">
+                            <div className="admin-list-item-title">{link.platform}</div>
+                            <div className="admin-list-item-subtitle">{link.url}</div>
+                        </div>
+                    </div>
+                    <div className="admin-list-item-actions">
+                        <button className="admin-icon-btn" onClick={() => handleEdit(link)}>
+                            <Edit3 size={14} />
+                        </button>
+                        <button
+                            className="admin-icon-btn danger"
+                            onClick={() => handleDelete(link._id)}
+                        >
+                            <Trash2 size={14} />
+                        </button>
+                    </div>
+                </div>
+            ))}
+
+            {showForm && (
+                <div className="admin-modal-overlay" onClick={resetForm}>
+                    <div className="admin-modal" onClick={(e) => e.stopPropagation()}>
+                        <h3 className="admin-modal-title">
+                            {editId ? "Edit Link" : "Add Social Link"}
+                        </h3>
+                        <div className="admin-field">
+                            <label>Platform</label>
+                            <select
+                                value={platform}
+                                onChange={(e) => setPlatform(e.target.value)}
+                                style={{
+                                    width: "100%",
+                                    padding: "12px 16px",
+                                    border: "2px solid #e5e7eb",
+                                    borderRadius: "12px",
+                                    fontSize: "14px",
+                                    outline: "none",
+                                }}
+                            >
+                                <option value="">Select platform</option>
+                                {platforms.map((p) => (
+                                    <option key={p} value={p}>{p}</option>
+                                ))}
+                            </select>
+                        </div>
+                        <div className="admin-field">
+                            <label>URL</label>
+                            <input
+                                type="url"
+                                value={url}
+                                onChange={(e) => setUrl(e.target.value)}
+                                placeholder="https://..."
+                            />
+                        </div>
+                        <div className="admin-modal-actions">
+                            <button className="admin-cancel-btn" onClick={resetForm}>Cancel</button>
+                            <button
+                                className="admin-save-btn"
+                                onClick={handleSave}
+                                disabled={!platform || !url}
+                            >
+                                Save
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            <button className="admin-add-btn" onClick={() => setShowForm(true)}>
+                <Plus size={16} /> Add Social Link
+            </button>
+        </div>
+    );
+}
+
+// ===== BRANDS PANEL =====
+function BrandsPanel({ onSave }: { onSave: (msg?: string) => void }) {
+    const brands = useQuery(api.brands.listAll);
+    const createBrand = useMutation(api.brands.create);
+    const updateBrand = useMutation(api.brands.update);
+    const removeBrand = useMutation(api.brands.remove);
+    const generateUploadUrl = useMutation(api.admin.generateUploadUrl);
+    const [showForm, setShowForm] = useState(false);
+    const [editId, setEditId] = useState<string | null>(null);
+    const [name, setName] = useState("");
+    const [logoUrl, setLogoUrl] = useState("");
+    const [uploading, setUploading] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
+    const resetForm = () => {
+        setName("");
+        setLogoUrl("");
+        setEditId(null);
+        setShowForm(false);
+    };
+
+    const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        setUploading(true);
+        try {
+            const uploadUrl = await generateUploadUrl();
+            const result = await fetch(uploadUrl, {
+                method: "POST",
+                headers: { "Content-Type": file.type },
+                body: file,
+            });
+            const { storageId } = await result.json();
+            setLogoUrl(storageId);
+        } catch (err) {
+            console.error("Upload failed:", err);
+        } finally {
+            setUploading(false);
+        }
+    };
+
+    const handleSave = async () => {
+        if (editId) {
+            await updateBrand({ id: editId as any, name, logoUrl });
+        } else {
+            await createBrand({
+                name,
+                logoUrl,
+                order: (brands?.length || 0) + 1,
+                isActive: true,
+            });
+        }
+        resetForm();
+        onSave();
+    };
+
+    const handleEdit = (brand: any) => {
+        setName(brand.name);
+        setLogoUrl(brand.logoUrl || "");
+        setEditId(brand._id);
+        setShowForm(true);
+    };
+
+    const handleDelete = async (id: any) => {
+        await removeBrand({ id });
+        onSave("Brand deleted!");
+    };
+
+    return (
+        <div>
+            <h2 className="admin-panel-title">Brands Worked With</h2>
+
+            {brands?.map((brand) => (
+                <div key={brand._id} className="admin-list-item">
+                    <div className="admin-list-item-info">
+                        <div
+                            className="admin-list-item-image"
+                            style={{
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                background: "linear-gradient(135deg, #E8707A, #F2A5AB)",
+                                color: "white",
+                                fontWeight: 700,
+                            }}
+                        >
+                            {brand.name.charAt(0)}
+                        </div>
+                        <div className="admin-list-item-text">
+                            <div className="admin-list-item-title">{brand.name}</div>
+                        </div>
+                    </div>
+                    <div className="admin-list-item-actions">
+                        <button className="admin-icon-btn" onClick={() => handleEdit(brand)}>
+                            <Edit3 size={14} />
+                        </button>
+                        <button
+                            className="admin-icon-btn danger"
+                            onClick={() => handleDelete(brand._id)}
+                        >
+                            <Trash2 size={14} />
+                        </button>
+                    </div>
+                </div>
+            ))}
+
+            {showForm && (
+                <div className="admin-modal-overlay" onClick={resetForm}>
+                    <div className="admin-modal" onClick={(e) => e.stopPropagation()}>
+                        <h3 className="admin-modal-title">
+                            {editId ? "Edit Brand" : "Add Brand"}
+                        </h3>
+                        <div className="admin-field">
+                            <label>Brand Name</label>
+                            <input
+                                type="text"
+                                value={name}
+                                onChange={(e) => setName(e.target.value)}
+                                placeholder="Enter brand name"
+                            />
+                        </div>
+                        <div className="admin-field">
+                            <label>Logo</label>
+                            <div
+                                className="image-upload-area"
+                                onClick={() => fileInputRef.current?.click()}
+                            >
+                                <Upload size={24} style={{ color: "var(--color-primary-light)", marginBottom: 8 }} />
+                                <p className="image-upload-text">
+                                    {uploading ? "Uploading..." : "Click to upload logo"}
+                                </p>
+                                <input
+                                    ref={fileInputRef}
+                                    type="file"
+                                    accept="image/*"
+                                    onChange={handleImageUpload}
+                                    style={{ display: "none" }}
+                                />
+                            </div>
+                        </div>
+                        <div className="admin-modal-actions">
+                            <button className="admin-cancel-btn" onClick={resetForm}>Cancel</button>
+                            <button
+                                className="admin-save-btn"
+                                onClick={handleSave}
+                                disabled={!name}
+                            >
+                                Save
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            <button className="admin-add-btn" onClick={() => setShowForm(true)}>
+                <Plus size={16} /> Add Brand
+            </button>
+        </div>
+    );
+}
+
+// ===== RATE CARD PANEL =====
+function RateCardPanel({ onSave }: { onSave: (msg?: string) => void }) {
+    const settings = useQuery(api.siteSettings.get);
+    const updateSettings = useMutation(api.siteSettings.update);
+    const [title, setTitle] = useState("");
+    const [items, setItems] = useState<RateItem[]>([]);
+    const [showForm, setShowForm] = useState(false);
+    const [editIndex, setEditIndex] = useState<number | null>(null);
+    const [service, setService] = useState("");
+    const [price, setPrice] = useState("");
+    const [description, setDescription] = useState("");
+
+    useEffect(() => {
+        if (settings) {
+            setTitle(settings.rateCardTitle || "");
+            setItems(settings.rateCardItems || []);
+        }
+    }, [settings]);
+
+    const resetForm = () => {
+        setService("");
+        setPrice("");
+        setDescription("");
+        setEditIndex(null);
+        setShowForm(false);
+    };
+
+    const handleSaveItem = () => {
+        const newItems = [...items];
+        const item: RateItem = { service, price, description };
+        if (editIndex !== null) {
+            newItems[editIndex] = item;
+        } else {
+            newItems.push(item);
+        }
+        setItems(newItems);
+        resetForm();
+    };
+
+    const handleEditItem = (index: number) => {
+        const item = items[index];
+        setService(item.service);
+        setPrice(item.price);
+        setDescription(item.description || "");
+        setEditIndex(index);
+        setShowForm(true);
+    };
+
+    const handleDeleteItem = (index: number) => {
+        setItems(items.filter((_, i) => i !== index));
+    };
+
+    const handleSaveAll = async () => {
+        await updateSettings({ rateCardTitle: title, rateCardItems: items });
+        onSave();
+    };
+
+    return (
+        <div>
+            <h2 className="admin-panel-title">Rate Card</h2>
+
+            <div className="admin-field">
+                <label>Section Title</label>
+                <input
+                    type="text"
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    placeholder="e.g. Collaboration Rates"
+                />
+            </div>
+
+            {items.map((item, index) => (
+                <div key={index} className="admin-list-item">
+                    <div className="admin-list-item-info">
+                        <div className="admin-list-item-text">
+                            <div className="admin-list-item-title">{item.service}</div>
+                            <div className="admin-list-item-subtitle">{item.price}</div>
+                        </div>
+                    </div>
+                    <div className="admin-list-item-actions">
+                        <button className="admin-icon-btn" onClick={() => handleEditItem(index)}>
+                            <Edit3 size={14} />
+                        </button>
+                        <button
+                            className="admin-icon-btn danger"
+                            onClick={() => handleDeleteItem(index)}
+                        >
+                            <Trash2 size={14} />
+                        </button>
+                    </div>
+                </div>
+            ))}
+
+            {showForm && (
+                <div className="admin-modal-overlay" onClick={resetForm}>
+                    <div className="admin-modal" onClick={(e) => e.stopPropagation()}>
+                        <h3 className="admin-modal-title">
+                            {editIndex !== null ? "Edit Rate" : "Add Rate"}
+                        </h3>
+                        <div className="admin-field">
+                            <label>Service Name</label>
+                            <input
+                                type="text"
+                                value={service}
+                                onChange={(e) => setService(e.target.value)}
+                                placeholder="e.g. Instagram Reel"
+                            />
+                        </div>
+                        <div className="admin-field">
+                            <label>Price</label>
+                            <input
+                                type="text"
+                                value={price}
+                                onChange={(e) => {
+                                    let v = e.target.value;
+                                    if (v && !v.startsWith("₦")) {
+                                        v = "₦" + v.replace(/^[₦$£€]/, "").trim();
+                                    }
+                                    setPrice(v);
+                                }}
+                                onFocus={() => {
+                                    if (!price) setPrice("₦");
+                                }}
+                                onBlur={() => {
+                                    if (price === "₦") setPrice("");
+                                }}
+                                placeholder="e.g. ₦500"
+                            />
+                        </div>
+                        <div className="admin-field">
+                            <label>Description (optional)</label>
+                            <input
+                                type="text"
+                                value={description}
+                                onChange={(e) => setDescription(e.target.value)}
+                                placeholder="Brief description"
+                            />
+                        </div>
+                        <div className="admin-modal-actions">
+                            <button className="admin-cancel-btn" onClick={resetForm}>Cancel</button>
+                            <button
+                                className="admin-save-btn"
+                                onClick={handleSaveItem}
+                                disabled={!service || !price}
+                            >
+                                Save
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            <button className="admin-add-btn" onClick={() => setShowForm(true)}>
+                <Plus size={16} /> Add Rate
+            </button>
+
+            <div style={{ marginTop: 20 }}>
+                <button className="admin-save-btn" onClick={handleSaveAll}>
+                    <Save size={16} style={{ display: "inline", marginRight: 6 }} />
+                    Save All Changes
+                </button>
+            </div>
+        </div>
+    );
+}
+
+// ===== PRODUCTS PANEL =====
+function ProductsPanel({ onSave }: { onSave: (msg?: string) => void }) {
+    const products = useQuery(api.products.listAll);
+    const createProduct = useMutation(api.products.create);
+    const updateProduct = useMutation(api.products.update);
+    const removeProduct = useMutation(api.products.remove);
+    const generateUploadUrl = useMutation(api.admin.generateUploadUrl);
+    const [showForm, setShowForm] = useState(false);
+    const [editId, setEditId] = useState<string | null>(null);
+    const [name, setName] = useState("");
+    const [price, setPrice] = useState("");
+    const [description, setDescription] = useState("");
+    const [imageUrl, setImageUrl] = useState("");
+    const [uploading, setUploading] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
+    const resetForm = () => {
+        setName("");
+        setPrice("");
+        setDescription("");
+        setImageUrl("");
+        setEditId(null);
+        setShowForm(false);
+    };
+
+    const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        setUploading(true);
+        try {
+            const uploadUrl = await generateUploadUrl();
+            const result = await fetch(uploadUrl, {
+                method: "POST",
+                headers: { "Content-Type": file.type },
+                body: file,
+            });
+            const { storageId } = await result.json();
+            setImageUrl(storageId);
+        } catch (err) {
+            console.error("Upload failed:", err);
+        } finally {
+            setUploading(false);
+        }
+    };
+
+    const handleSave = async () => {
+        if (editId) {
+            await updateProduct({ id: editId as any, name, price, description, imageUrl });
+        } else {
+            await createProduct({
+                name,
+                price,
+                description,
+                imageUrl,
+                order: (products?.length || 0) + 1,
+                isActive: true,
+            });
+        }
+        resetForm();
+        onSave();
+    };
+
+    const handleEdit = (product: any) => {
+        setName(product.name);
+        setPrice(product.price);
+        setDescription(product.description || "");
+        setImageUrl(product.imageUrl || "");
+        setEditId(product._id);
+        setShowForm(true);
+    };
+
+    const handleDelete = async (id: any) => {
+        await removeProduct({ id });
+        onSave("Product deleted!");
+    };
+
+    const toggleActive = async (product: any) => {
+        await updateProduct({ id: product._id, isActive: !product.isActive });
+        onSave(product.isActive ? "Product hidden" : "Product visible");
+    };
+
+    return (
+        <div>
+            <h2 className="admin-panel-title">Products</h2>
+
+            {products?.map((product) => (
+                <div
+                    key={product._id}
+                    className="admin-list-item"
+                    style={{ opacity: product.isActive ? 1 : 0.5 }}
+                >
+                    <div className="admin-list-item-info">
+                        <div
+                            className="admin-list-item-image"
+                            style={{
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                background: "var(--color-gradient-start)",
+                            }}
+                        >
+                            <ShoppingBag size={18} style={{ color: "var(--color-primary)" }} />
+                        </div>
+                        <div className="admin-list-item-text">
+                            <div className="admin-list-item-title">{product.name}</div>
+                            <div className="admin-list-item-subtitle">{product.price}</div>
+                        </div>
+                    </div>
+                    <div className="admin-list-item-actions">
+                        <button
+                            className="admin-icon-btn"
+                            onClick={() => toggleActive(product)}
+                            title={product.isActive ? "Hide" : "Show"}
+                        >
+                            {product.isActive ? <X size={14} /> : <Plus size={14} />}
+                        </button>
+                        <button className="admin-icon-btn" onClick={() => handleEdit(product)}>
+                            <Edit3 size={14} />
+                        </button>
+                        <button
+                            className="admin-icon-btn danger"
+                            onClick={() => handleDelete(product._id)}
+                        >
+                            <Trash2 size={14} />
+                        </button>
+                    </div>
+                </div>
+            ))}
+
+            {showForm && (
+                <div className="admin-modal-overlay" onClick={resetForm}>
+                    <div className="admin-modal" onClick={(e) => e.stopPropagation()}>
+                        <h3 className="admin-modal-title">
+                            {editId ? "Edit Product" : "Add Product"}
+                        </h3>
+                        <div className="admin-field">
+                            <label>Product Name</label>
+                            <input
+                                type="text"
+                                value={name}
+                                onChange={(e) => setName(e.target.value)}
+                                placeholder="Enter product name"
+                            />
+                        </div>
+                        <div className="admin-field">
+                            <label>Price</label>
+                            <input
+                                type="text"
+                                value={price}
+                                onChange={(e) => {
+                                    let v = e.target.value;
+                                    if (v && !v.startsWith("₦")) {
+                                        v = "₦" + v.replace(/^[₦$£€]/, "").trim();
+                                    }
+                                    setPrice(v);
+                                }}
+                                onFocus={() => {
+                                    if (!price) setPrice("₦");
+                                }}
+                                onBlur={() => {
+                                    if (price === "₦") setPrice("");
+                                }}
+                                placeholder="e.g. ₦29.99"
+                            />
+                        </div>
+                        <div className="admin-field">
+                            <label>Description</label>
+                            <textarea
+                                rows={3}
+                                value={description}
+                                onChange={(e) => setDescription(e.target.value)}
+                                placeholder="Product description"
+                            />
+                        </div>
+                        <div className="admin-field">
+                            <label>Product Image</label>
+                            <div
+                                className="image-upload-area"
+                                onClick={() => fileInputRef.current?.click()}
+                            >
+                                <Upload size={24} style={{ color: "var(--color-primary-light)", marginBottom: 8 }} />
+                                <p className="image-upload-text">
+                                    {uploading ? "Uploading..." : "Click to upload image"}
+                                </p>
+                                <input
+                                    ref={fileInputRef}
+                                    type="file"
+                                    accept="image/*"
+                                    onChange={handleImageUpload}
+                                    style={{ display: "none" }}
+                                />
+                            </div>
+                        </div>
+                        <div className="admin-modal-actions">
+                            <button className="admin-cancel-btn" onClick={resetForm}>Cancel</button>
+                            <button
+                                className="admin-save-btn"
+                                onClick={handleSave}
+                                disabled={!name || !price}
+                            >
+                                Save
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            <button className="admin-add-btn" onClick={() => setShowForm(true)}>
+                <Plus size={16} /> Add Product
+            </button>
+        </div>
+    );
+}
+
+// ===== SETTINGS PANEL =====
+function SettingsPanel({ onSave }: { onSave: (msg?: string) => void }) {
+    const settings = useQuery(api.siteSettings.get);
+    const updateSettings = useMutation(api.siteSettings.update);
+    const [whatsappNumber, setWhatsappNumber] = useState("");
+    const [footerText, setFooterText] = useState("");
+    const [maintenanceMode, setMaintenanceMode] = useState(false);
+
+    useEffect(() => {
+        if (settings) {
+            setWhatsappNumber(settings.whatsappNumber || "");
+            setFooterText(settings.footerText || "");
+            setMaintenanceMode(settings.maintenanceMode || false);
+        }
+    }, [settings]);
+
+    const handleSave = async () => {
+        await updateSettings({ whatsappNumber, footerText, maintenanceMode });
+        onSave();
+    };
+
+    const toggleMaintenance = async () => {
+        const newVal = !maintenanceMode;
+        setMaintenanceMode(newVal);
+        await updateSettings({ maintenanceMode: newVal });
+        onSave(newVal ? "Maintenance mode ON" : "Maintenance mode OFF");
+    };
+
+    return (
+        <div>
+            <h2 className="admin-panel-title">Site Settings</h2>
+
+            <div style={{ marginBottom: 24 }}>
+                <div className="toggle-wrapper">
+                    <div>
+                        <div className="toggle-label">Maintenance Mode</div>
+                        <div className="toggle-desc">
+                            When enabled, visitors will see a maintenance page
+                        </div>
+                    </div>
+                    <button
+                        className={`toggle-switch ${maintenanceMode ? "active" : ""}`}
+                        onClick={toggleMaintenance}
+                    />
+                </div>
+            </div>
+
+            <div className="admin-field">
+                <label>WhatsApp Number</label>
+                <input
+                    type="text"
+                    value={whatsappNumber}
+                    onChange={(e) => setWhatsappNumber(e.target.value)}
+                    placeholder="e.g. 2341234567890"
+                />
+            </div>
+
+            <div className="admin-field">
+                <label>Footer Text</label>
+                <input
+                    type="text"
+                    value={footerText}
+                    onChange={(e) => setFooterText(e.target.value)}
+                    placeholder="Footer copyright text"
+                />
+            </div>
+
+            <button className="admin-save-btn" onClick={handleSave}>
+                <Save size={16} style={{ display: "inline", marginRight: 6 }} />
+                Save Settings
+            </button>
+        </div>
+    );
+}
