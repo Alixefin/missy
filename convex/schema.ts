@@ -22,6 +22,10 @@ export default defineSchema({
     whatsappNumber: v.optional(v.string()),
     maintenanceMode: v.boolean(),
     footerText: v.optional(v.string()),
+    // Contact info
+    phoneNumber: v.optional(v.string()),
+    email: v.optional(v.string()),
+    contactAddress: v.optional(v.string()),
   }),
 
   products: defineTable({
@@ -58,5 +62,31 @@ export default defineSchema({
 
   adminConfig: defineTable({
     password: v.string(),
+  }),
+
+  services: defineTable({
+    name: v.string(),
+    description: v.optional(v.string()),
+    icon: v.optional(v.string()),
+    order: v.number(),
+    isActive: v.boolean(),
+  }),
+
+  socialStats: defineTable({
+    platform: v.string(),
+    followers: v.optional(v.string()),
+    engagement: v.optional(v.string()),
+    avgLikes: v.optional(v.string()),
+    avgComments: v.optional(v.string()),
+    customStats: v.optional(
+      v.array(
+        v.object({
+          label: v.string(),
+          value: v.string(),
+        })
+      )
+    ),
+    order: v.number(),
+    isActive: v.boolean(),
   }),
 });

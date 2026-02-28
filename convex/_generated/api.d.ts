@@ -12,8 +12,10 @@ import type * as admin from "../admin.js";
 import type * as brands from "../brands.js";
 import type * as migrateCurrency from "../migrateCurrency.js";
 import type * as products from "../products.js";
+import type * as services from "../services.js";
 import type * as siteSettings from "../siteSettings.js";
 import type * as socialLinks from "../socialLinks.js";
+import type * as socialStats from "../socialStats.js";
 import type * as testimonials from "../testimonials.js";
 
 import type {
@@ -27,8 +29,10 @@ declare const fullApi: ApiFromModules<{
   brands: typeof brands;
   migrateCurrency: typeof migrateCurrency;
   products: typeof products;
+  services: typeof services;
   siteSettings: typeof siteSettings;
   socialLinks: typeof socialLinks;
+  socialStats: typeof socialStats;
   testimonials: typeof testimonials;
 }>;
 

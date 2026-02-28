@@ -54,6 +54,9 @@ export const update = mutation({
         whatsappNumber: v.optional(v.string()),
         maintenanceMode: v.optional(v.boolean()),
         footerText: v.optional(v.string()),
+        phoneNumber: v.optional(v.string()),
+        email: v.optional(v.string()),
+        contactAddress: v.optional(v.string()),
     },
     handler: async (ctx, args) => {
         const existing = await ctx.db.query("siteSettings").first();

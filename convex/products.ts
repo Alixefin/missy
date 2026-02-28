@@ -4,12 +4,23 @@ import { v } from "convex/values";
 export const list = query({
     args: {},
     handler: async (ctx) => {
-        const products = await ctx.db
-            .query("products")
-            .collect();
-        return products
+        const products = await ctx.db.query("products").collect();
+        const activeProducts = products
             .filter((p) => p.isActive)
             .sort((a, b) => a.order - b.order);
+
+        // Resolve storage IDs to URLs for product images
+        return await Promise.all(
+            activeProducts.map(async (product) => {
+                let resolvedImageUrl = product.imageUrl;
+                if (product.imageUrl && product.imageUrl.startsWith("kg")) {
+                    try {
+                        resolvedImageUrl = await ctx.storage.getUrl(product.imageUrl as any) ?? undefined;
+                    } catch { }
+                }
+                return { ...product, imageUrl: resolvedImageUrl };
+            })
+        );
     },
 });
 
@@ -17,7 +28,20 @@ export const listAll = query({
     args: {},
     handler: async (ctx) => {
         const products = await ctx.db.query("products").collect();
-        return products.sort((a, b) => a.order - b.order);
+        const sorted = products.sort((a, b) => a.order - b.order);
+
+        // Resolve storage IDs to URLs for product images
+        return await Promise.all(
+            sorted.map(async (product) => {
+                let resolvedImageUrl = product.imageUrl;
+                if (product.imageUrl && product.imageUrl.startsWith("kg")) {
+                    try {
+                        resolvedImageUrl = await ctx.storage.getUrl(product.imageUrl as any) ?? undefined;
+                    } catch { }
+                }
+                return { ...product, imageUrl: resolvedImageUrl };
+            })
+        );
     },
 });
 

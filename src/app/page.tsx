@@ -14,6 +14,9 @@ import ProductModal from "@/components/ProductModal";
 import Footer from "@/components/Footer";
 import TestimonialsSection from "@/components/TestimonialsSection";
 import MaintenancePage from "@/components/MaintenancePage";
+import ContactSection from "@/components/ContactSection";
+import ServicesSection from "@/components/ServicesSection";
+import SocialStatsSection from "@/components/SocialStatsSection";
 
 interface Product {
   _id: string;
@@ -32,6 +35,8 @@ export default function HomePage() {
   const socialLinks = useQuery(api.socialLinks.list);
   const brands = useQuery(api.brands.list);
   const testimonials = useQuery(api.testimonials.list);
+  const services = useQuery(api.services.list);
+  const socialStats = useQuery(api.socialStats.list);
   const initSettings = useMutation(api.siteSettings.initialize);
 
   const handleLoadingComplete = useCallback(() => {
@@ -71,6 +76,10 @@ export default function HomePage() {
 
         <SocialLinks links={socialLinks || []} />
 
+        <ServicesSection services={services || []} />
+
+        <SocialStatsSection stats={socialStats || []} />
+
         <BrandsSection brands={brands || []} />
 
         <TestimonialsSection testimonials={testimonials || []} />
@@ -83,6 +92,14 @@ export default function HomePage() {
         <ShopSection
           products={products || []}
           onProductClick={setSelectedProduct}
+        />
+
+        <ContactSection
+          phoneNumber={settings?.phoneNumber}
+          email={settings?.email}
+          address={settings?.contactAddress}
+          whatsappNumber={settings?.whatsappNumber}
+          socialLinks={socialLinks || []}
         />
 
         <Footer footerText={settings?.footerText} />

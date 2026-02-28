@@ -26,10 +26,13 @@ import {
     Eye,
     EyeOff,
     Star,
+    Send,
+    Briefcase,
+    BarChart3,
 } from "lucide-react";
 import Image from "next/image";
 
-type Tab = "profile" | "about" | "social" | "brands" | "testimonials" | "ratecard" | "products" | "settings";
+type Tab = "profile" | "about" | "social" | "brands" | "testimonials" | "ratecard" | "products" | "settings" | "contact" | "services" | "demographics";
 
 interface RateItem {
     service: string;
@@ -64,10 +67,13 @@ export default function AdminDashboard() {
         { key: "profile", label: "Profile", icon: <User size={16} /> },
         { key: "about", label: "About", icon: <FileText size={16} /> },
         { key: "social", label: "Social", icon: <Share2 size={16} /> },
+        { key: "services", label: "Services", icon: <Briefcase size={16} /> },
+        { key: "demographics", label: "Stats", icon: <BarChart3 size={16} /> },
         { key: "brands", label: "Brands", icon: <Award size={16} /> },
         { key: "testimonials", label: "Testimonials", icon: <MessageCircle size={16} /> },
         { key: "ratecard", label: "Rates", icon: <CreditCard size={16} /> },
         { key: "products", label: "Products", icon: <ShoppingBag size={16} /> },
+        { key: "contact", label: "Contact", icon: <Send size={16} /> },
         { key: "settings", label: "Settings", icon: <Settings size={16} /> },
     ];
 
@@ -106,10 +112,13 @@ export default function AdminDashboard() {
                 {activeTab === "profile" && <ProfilePanel onSave={showSaveMessage} />}
                 {activeTab === "about" && <AboutPanel onSave={showSaveMessage} />}
                 {activeTab === "social" && <SocialPanel onSave={showSaveMessage} />}
+                {activeTab === "services" && <ServicesPanel onSave={showSaveMessage} />}
+                {activeTab === "demographics" && <DemographicsPanel onSave={showSaveMessage} />}
                 {activeTab === "brands" && <BrandsPanel onSave={showSaveMessage} />}
                 {activeTab === "testimonials" && <TestimonialsPanel onSave={showSaveMessage} />}
                 {activeTab === "ratecard" && <RateCardPanel onSave={showSaveMessage} />}
                 {activeTab === "products" && <ProductsPanel onSave={showSaveMessage} />}
+                {activeTab === "contact" && <ContactPanel onSave={showSaveMessage} />}
                 {activeTab === "settings" && <SettingsPanel onSave={showSaveMessage} />}
             </div>
         </div>
@@ -1390,6 +1399,486 @@ function SettingsPanel({ onSave }: { onSave: (msg?: string) => void }) {
                     </button>
                 </div>
             </div>
+        </div>
+    );
+}
+
+// ===== CONTACT PANEL =====
+function ContactPanel({ onSave }: { onSave: (msg?: string) => void }) {
+    const settings = useQuery(api.siteSettings.get);
+    const updateSettings = useMutation(api.siteSettings.update);
+    const [phoneNumber, setPhoneNumber] = useState("");
+    const [email, setEmail] = useState("");
+    const [contactAddress, setContactAddress] = useState("");
+
+    useEffect(() => {
+        if (settings) {
+            setPhoneNumber(settings.phoneNumber || "");
+            setEmail(settings.email || "");
+            setContactAddress(settings.contactAddress || "");
+        }
+    }, [settings]);
+
+    const handleSave = async () => {
+        await updateSettings({ phoneNumber, email, contactAddress });
+        onSave();
+    };
+
+    return (
+        <div>
+            <h2 className="admin-panel-title">Contact Information</h2>
+            <p style={{ fontSize: 13, color: "var(--color-text-light)", marginBottom: 20 }}>
+                This info will appear in the &quot;Get In Touch&quot; section on your homepage.
+            </p>
+
+            <div className="admin-field">
+                <label>Phone Number</label>
+                <input
+                    type="tel"
+                    value={phoneNumber}
+                    onChange={(e) => setPhoneNumber(e.target.value)}
+                    placeholder="e.g. +234 812 345 6789"
+                />
+            </div>
+
+            <div className="admin-field">
+                <label>Email Address</label>
+                <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="e.g. hello@missy.com"
+                />
+            </div>
+
+            <div className="admin-field">
+                <label>Location / Address</label>
+                <input
+                    type="text"
+                    value={contactAddress}
+                    onChange={(e) => setContactAddress(e.target.value)}
+                    placeholder="e.g. Lagos, Nigeria"
+                />
+            </div>
+
+            <button className="admin-save-btn" onClick={handleSave}>
+                <Save size={16} style={{ display: "inline", marginRight: 6 }} />
+                Save Contact Info
+            </button>
+        </div>
+    );
+}
+
+// ===== SERVICES PANEL =====
+function ServicesPanel({ onSave }: { onSave: (msg?: string) => void }) {
+    const services = useQuery(api.services.listAll);
+    const createService = useMutation(api.services.create);
+    const updateService = useMutation(api.services.update);
+    const removeService = useMutation(api.services.remove);
+    const [showForm, setShowForm] = useState(false);
+    const [editId, setEditId] = useState<string | null>(null);
+    const [name, setName] = useState("");
+    const [description, setDescription] = useState("");
+
+    const resetForm = () => {
+        setName("");
+        setDescription("");
+        setEditId(null);
+        setShowForm(false);
+    };
+
+    const handleSave = async () => {
+        if (editId) {
+            await updateService({ id: editId as any, name, description });
+        } else {
+            await createService({
+                name,
+                description,
+                order: (services?.length || 0) + 1,
+                isActive: true,
+            });
+        }
+        resetForm();
+        onSave();
+    };
+
+    const handleEdit = (service: any) => {
+        setName(service.name);
+        setDescription(service.description || "");
+        setEditId(service._id);
+        setShowForm(true);
+    };
+
+    const handleDelete = async (id: any) => {
+        await removeService({ id });
+        onSave("Service deleted!");
+    };
+
+    return (
+        <div>
+            <h2 className="admin-panel-title">Services</h2>
+
+            {services?.map((service) => (
+                <div key={service._id} className="admin-list-item">
+                    <div className="admin-list-item-info">
+                        <div
+                            className="admin-list-item-image"
+                            style={{
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                background: "linear-gradient(135deg, #E8707A, #F2A5AB)",
+                                color: "white",
+                                fontWeight: 700,
+                                borderRadius: 10,
+                            }}
+                        >
+                            <Briefcase size={18} />
+                        </div>
+                        <div className="admin-list-item-text">
+                            <div className="admin-list-item-title">{service.name}</div>
+                            {service.description && (
+                                <div className="admin-list-item-subtitle">{service.description}</div>
+                            )}
+                        </div>
+                    </div>
+                    <div className="admin-list-item-actions">
+                        <button className="admin-icon-btn" onClick={() => handleEdit(service)}>
+                            <Edit3 size={14} />
+                        </button>
+                        <button
+                            className="admin-icon-btn danger"
+                            onClick={() => handleDelete(service._id)}
+                        >
+                            <Trash2 size={14} />
+                        </button>
+                    </div>
+                </div>
+            ))}
+
+            {showForm && (
+                <div className="admin-modal-overlay" onClick={resetForm}>
+                    <div className="admin-modal" onClick={(e) => e.stopPropagation()}>
+                        <h3 className="admin-modal-title">
+                            {editId ? "Edit Service" : "Add Service"}
+                        </h3>
+                        <div className="admin-field">
+                            <label>Service Name</label>
+                            <input
+                                type="text"
+                                value={name}
+                                onChange={(e) => setName(e.target.value)}
+                                placeholder="e.g. Content Creation"
+                            />
+                        </div>
+                        <div className="admin-field">
+                            <label>Description (optional)</label>
+                            <textarea
+                                rows={3}
+                                value={description}
+                                onChange={(e) => setDescription(e.target.value)}
+                                placeholder="Brief description of the service"
+                            />
+                        </div>
+                        <div className="admin-modal-actions">
+                            <button className="admin-cancel-btn" onClick={resetForm}>Cancel</button>
+                            <button
+                                className="admin-save-btn"
+                                onClick={handleSave}
+                                disabled={!name}
+                            >
+                                Save
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            <button className="admin-add-btn" onClick={() => setShowForm(true)}>
+                <Plus size={16} /> Add Service
+            </button>
+        </div>
+    );
+}
+
+// ===== DEMOGRAPHICS PANEL =====
+function DemographicsPanel({ onSave }: { onSave: (msg?: string) => void }) {
+    const stats = useQuery(api.socialStats.listAll);
+    const createStat = useMutation(api.socialStats.create);
+    const updateStat = useMutation(api.socialStats.update);
+    const removeStat = useMutation(api.socialStats.remove);
+    const [showForm, setShowForm] = useState(false);
+    const [editId, setEditId] = useState<string | null>(null);
+    const [platform, setPlatform] = useState("");
+    const [followers, setFollowers] = useState("");
+    const [engagement, setEngagement] = useState("");
+    const [avgLikes, setAvgLikes] = useState("");
+    const [avgComments, setAvgComments] = useState("");
+    const [customStats, setCustomStats] = useState<{ label: string; value: string }[]>([]);
+
+    const platforms = ["Instagram", "TikTok", "YouTube", "Twitter", "Facebook", "LinkedIn"];
+
+    const resetForm = () => {
+        setPlatform("");
+        setFollowers("");
+        setEngagement("");
+        setAvgLikes("");
+        setAvgComments("");
+        setCustomStats([]);
+        setEditId(null);
+        setShowForm(false);
+    };
+
+    const handleSave = async () => {
+        const filteredCustomStats = customStats.filter((s) => s.label && s.value);
+        if (editId) {
+            await updateStat({
+                id: editId as any,
+                platform,
+                followers,
+                engagement,
+                avgLikes,
+                avgComments,
+                customStats: filteredCustomStats.length > 0 ? filteredCustomStats : undefined,
+            });
+        } else {
+            await createStat({
+                platform,
+                followers,
+                engagement,
+                avgLikes,
+                avgComments,
+                customStats: filteredCustomStats.length > 0 ? filteredCustomStats : undefined,
+                order: (stats?.length || 0) + 1,
+                isActive: true,
+            });
+        }
+        resetForm();
+        onSave();
+    };
+
+    const handleEdit = (stat: any) => {
+        setPlatform(stat.platform);
+        setFollowers(stat.followers || "");
+        setEngagement(stat.engagement || "");
+        setAvgLikes(stat.avgLikes || "");
+        setAvgComments(stat.avgComments || "");
+        setCustomStats(stat.customStats || []);
+        setEditId(stat._id);
+        setShowForm(true);
+    };
+
+    const handleDelete = async (id: any) => {
+        await removeStat({ id });
+        onSave("Stat deleted!");
+    };
+
+    const addCustomStat = () => {
+        setCustomStats([...customStats, { label: "", value: "" }]);
+    };
+
+    const updateCustomStat = (index: number, field: "label" | "value", val: string) => {
+        const updated = [...customStats];
+        updated[index][field] = val;
+        setCustomStats(updated);
+    };
+
+    const removeCustomStat = (index: number) => {
+        setCustomStats(customStats.filter((_, i) => i !== index));
+    };
+
+    return (
+        <div>
+            <h2 className="admin-panel-title">Social Media Demographics</h2>
+
+            {stats?.map((stat) => (
+                <div key={stat._id} className="admin-list-item">
+                    <div className="admin-list-item-info">
+                        <div
+                            className="admin-list-item-image"
+                            style={{
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                background: "linear-gradient(135deg, #E8707A, #F2A5AB)",
+                                color: "white",
+                                fontWeight: 700,
+                                borderRadius: 10,
+                            }}
+                        >
+                            <BarChart3 size={18} />
+                        </div>
+                        <div className="admin-list-item-text">
+                            <div className="admin-list-item-title">{stat.platform}</div>
+                            <div className="admin-list-item-subtitle">
+                                {stat.followers ? `${stat.followers} followers` : "No data yet"}
+                                {stat.engagement ? ` · ${stat.engagement} engagement` : ""}
+                            </div>
+                        </div>
+                    </div>
+                    <div className="admin-list-item-actions">
+                        <button className="admin-icon-btn" onClick={() => handleEdit(stat)}>
+                            <Edit3 size={14} />
+                        </button>
+                        <button
+                            className="admin-icon-btn danger"
+                            onClick={() => handleDelete(stat._id)}
+                        >
+                            <Trash2 size={14} />
+                        </button>
+                    </div>
+                </div>
+            ))}
+
+            {showForm && (
+                <div className="admin-modal-overlay" onClick={resetForm}>
+                    <div className="admin-modal" onClick={(e) => e.stopPropagation()}>
+                        <h3 className="admin-modal-title">
+                            {editId ? "Edit Demographics" : "Add Platform Stats"}
+                        </h3>
+                        <div className="admin-field">
+                            <label>Platform</label>
+                            <select
+                                value={platform}
+                                onChange={(e) => setPlatform(e.target.value)}
+                                style={{
+                                    width: "100%",
+                                    padding: "12px 16px",
+                                    border: "2px solid #e5e7eb",
+                                    borderRadius: "12px",
+                                    fontSize: "14px",
+                                    outline: "none",
+                                }}
+                            >
+                                <option value="">Select platform</option>
+                                {platforms.map((p) => (
+                                    <option key={p} value={p}>{p}</option>
+                                ))}
+                            </select>
+                        </div>
+                        <div className="admin-field">
+                            <label>Followers</label>
+                            <input
+                                type="text"
+                                value={followers}
+                                onChange={(e) => setFollowers(e.target.value)}
+                                placeholder="e.g. 15.2K"
+                            />
+                        </div>
+                        <div className="admin-field">
+                            <label>Engagement Rate</label>
+                            <input
+                                type="text"
+                                value={engagement}
+                                onChange={(e) => setEngagement(e.target.value)}
+                                placeholder="e.g. 4.8%"
+                            />
+                        </div>
+                        <div className="admin-field">
+                            <label>Average Likes</label>
+                            <input
+                                type="text"
+                                value={avgLikes}
+                                onChange={(e) => setAvgLikes(e.target.value)}
+                                placeholder="e.g. 520"
+                            />
+                        </div>
+                        <div className="admin-field">
+                            <label>Average Comments</label>
+                            <input
+                                type="text"
+                                value={avgComments}
+                                onChange={(e) => setAvgComments(e.target.value)}
+                                placeholder="e.g. 45"
+                            />
+                        </div>
+
+                        {/* Custom Stats */}
+                        <div style={{ marginTop: 8, marginBottom: 16 }}>
+                            <label style={{ display: "block", fontSize: 13, fontWeight: 600, marginBottom: 8 }}>
+                                Custom Stats
+                            </label>
+                            {customStats.map((cs, i) => (
+                                <div key={i} style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+                                    <input
+                                        type="text"
+                                        value={cs.label}
+                                        onChange={(e) => updateCustomStat(i, "label", e.target.value)}
+                                        placeholder="Label (e.g. Reach)"
+                                        style={{
+                                            flex: 1,
+                                            padding: "10px 12px",
+                                            border: "2px solid #e5e7eb",
+                                            borderRadius: 10,
+                                            fontSize: 13,
+                                            outline: "none",
+                                        }}
+                                    />
+                                    <input
+                                        type="text"
+                                        value={cs.value}
+                                        onChange={(e) => updateCustomStat(i, "value", e.target.value)}
+                                        placeholder="Value (e.g. 50K)"
+                                        style={{
+                                            flex: 1,
+                                            padding: "10px 12px",
+                                            border: "2px solid #e5e7eb",
+                                            borderRadius: 10,
+                                            fontSize: 13,
+                                            outline: "none",
+                                        }}
+                                    />
+                                    <button
+                                        onClick={() => removeCustomStat(i)}
+                                        style={{
+                                            background: "none",
+                                            border: "1px solid #e5e7eb",
+                                            borderRadius: 8,
+                                            cursor: "pointer",
+                                            padding: "0 8px",
+                                            color: "#ef4444",
+                                        }}
+                                    >
+                                        <X size={14} />
+                                    </button>
+                                </div>
+                            ))}
+                            <button
+                                type="button"
+                                onClick={addCustomStat}
+                                style={{
+                                    background: "var(--color-gradient-start)",
+                                    border: "2px dashed var(--color-border)",
+                                    borderRadius: 10,
+                                    padding: "8px 14px",
+                                    fontSize: 12,
+                                    fontWeight: 600,
+                                    color: "var(--color-primary)",
+                                    cursor: "pointer",
+                                }}
+                            >
+                                <Plus size={14} style={{ display: "inline", verticalAlign: "middle", marginRight: 4 }} />
+                                Add Custom Stat
+                            </button>
+                        </div>
+
+                        <div className="admin-modal-actions">
+                            <button className="admin-cancel-btn" onClick={resetForm}>Cancel</button>
+                            <button
+                                className="admin-save-btn"
+                                onClick={handleSave}
+                                disabled={!platform}
+                            >
+                                Save
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            <button className="admin-add-btn" onClick={() => setShowForm(true)}>
+                <Plus size={16} /> Add Platform Stats
+            </button>
         </div>
     );
 }

@@ -5,7 +5,20 @@ export const list = query({
     args: {},
     handler: async (ctx) => {
         const brands = await ctx.db.query("brands").collect();
-        return brands.filter((b) => b.isActive).sort((a, b) => a.order - b.order);
+        const activeBrands = brands.filter((b) => b.isActive).sort((a, b) => a.order - b.order);
+
+        // Resolve storage IDs to URLs for logos
+        return await Promise.all(
+            activeBrands.map(async (brand) => {
+                let resolvedLogoUrl = brand.logoUrl;
+                if (brand.logoUrl && brand.logoUrl.startsWith("kg")) {
+                    try {
+                        resolvedLogoUrl = await ctx.storage.getUrl(brand.logoUrl as any) ?? undefined;
+                    } catch { }
+                }
+                return { ...brand, logoUrl: resolvedLogoUrl };
+            })
+        );
     },
 });
 
@@ -13,7 +26,20 @@ export const listAll = query({
     args: {},
     handler: async (ctx) => {
         const brands = await ctx.db.query("brands").collect();
-        return brands.sort((a, b) => a.order - b.order);
+        const sorted = brands.sort((a, b) => a.order - b.order);
+
+        // Resolve storage IDs to URLs for logos
+        return await Promise.all(
+            sorted.map(async (brand) => {
+                let resolvedLogoUrl = brand.logoUrl;
+                if (brand.logoUrl && brand.logoUrl.startsWith("kg")) {
+                    try {
+                        resolvedLogoUrl = await ctx.storage.getUrl(brand.logoUrl as any) ?? undefined;
+                    } catch { }
+                }
+                return { ...brand, logoUrl: resolvedLogoUrl };
+            })
+        );
     },
 });
 
