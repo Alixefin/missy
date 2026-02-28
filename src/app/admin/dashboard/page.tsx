@@ -1,7 +1,5 @@
 "use client";
 
-export const dynamic = "force-dynamic";
-
 import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
@@ -23,10 +21,15 @@ import {
     Save,
     X,
     ImageIcon,
+    MessageCircle,
+    Key,
+    Eye,
+    EyeOff,
+    Star,
 } from "lucide-react";
 import Image from "next/image";
 
-type Tab = "profile" | "about" | "social" | "brands" | "ratecard" | "products" | "settings";
+type Tab = "profile" | "about" | "social" | "brands" | "testimonials" | "ratecard" | "products" | "settings";
 
 interface RateItem {
     service: string;
@@ -62,6 +65,7 @@ export default function AdminDashboard() {
         { key: "about", label: "About", icon: <FileText size={16} /> },
         { key: "social", label: "Social", icon: <Share2 size={16} /> },
         { key: "brands", label: "Brands", icon: <Award size={16} /> },
+        { key: "testimonials", label: "Testimonials", icon: <MessageCircle size={16} /> },
         { key: "ratecard", label: "Rates", icon: <CreditCard size={16} /> },
         { key: "products", label: "Products", icon: <ShoppingBag size={16} /> },
         { key: "settings", label: "Settings", icon: <Settings size={16} /> },
@@ -103,6 +107,7 @@ export default function AdminDashboard() {
                 {activeTab === "about" && <AboutPanel onSave={showSaveMessage} />}
                 {activeTab === "social" && <SocialPanel onSave={showSaveMessage} />}
                 {activeTab === "brands" && <BrandsPanel onSave={showSaveMessage} />}
+                {activeTab === "testimonials" && <TestimonialsPanel onSave={showSaveMessage} />}
                 {activeTab === "ratecard" && <RateCardPanel onSave={showSaveMessage} />}
                 {activeTab === "products" && <ProductsPanel onSave={showSaveMessage} />}
                 {activeTab === "settings" && <SettingsPanel onSave={showSaveMessage} />}
@@ -1029,13 +1034,181 @@ function ProductsPanel({ onSave }: { onSave: (msg?: string) => void }) {
     );
 }
 
+// ===== TESTIMONIALS PANEL =====
+function TestimonialsPanel({ onSave }: { onSave: (msg?: string) => void }) {
+    const testimonials = useQuery(api.testimonials.listAll);
+    const createTestimonial = useMutation(api.testimonials.create);
+    const updateTestimonial = useMutation(api.testimonials.update);
+    const removeTestimonial = useMutation(api.testimonials.remove);
+    const [showForm, setShowForm] = useState(false);
+    const [editId, setEditId] = useState<string | null>(null);
+    const [name, setName] = useState("");
+    const [text, setText] = useState("");
+    const [rating, setRating] = useState(5);
+
+    const resetForm = () => {
+        setName("");
+        setText("");
+        setRating(5);
+        setEditId(null);
+        setShowForm(false);
+    };
+
+    const handleSave = async () => {
+        if (editId) {
+            await updateTestimonial({ id: editId as any, name, text, rating });
+        } else {
+            await createTestimonial({
+                name,
+                text,
+                rating,
+                order: (testimonials?.length || 0) + 1,
+                isActive: true,
+            });
+        }
+        resetForm();
+        onSave();
+    };
+
+    const handleEdit = (t: any) => {
+        setName(t.name);
+        setText(t.text);
+        setRating(t.rating || 5);
+        setEditId(t._id);
+        setShowForm(true);
+    };
+
+    const handleDelete = async (id: any) => {
+        await removeTestimonial({ id });
+        onSave("Testimonial deleted!");
+    };
+
+    return (
+        <div>
+            <h2 className="admin-panel-title">Testimonials</h2>
+
+            {testimonials?.map((t) => (
+                <div key={t._id} className="admin-list-item">
+                    <div className="admin-list-item-info">
+                        <div
+                            className="admin-list-item-image"
+                            style={{
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                background: "linear-gradient(135deg, #E8707A, #F2A5AB)",
+                                color: "white",
+                                fontWeight: 700,
+                                borderRadius: "50%",
+                            }}
+                        >
+                            {t.name.charAt(0)}
+                        </div>
+                        <div className="admin-list-item-text">
+                            <div className="admin-list-item-title">{t.name}</div>
+                            <div className="admin-list-item-subtitle" style={{ maxWidth: 300, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                {t.text}
+                            </div>
+                        </div>
+                    </div>
+                    <div className="admin-list-item-actions">
+                        <button className="admin-icon-btn" onClick={() => handleEdit(t)}>
+                            <Edit3 size={14} />
+                        </button>
+                        <button
+                            className="admin-icon-btn danger"
+                            onClick={() => handleDelete(t._id)}
+                        >
+                            <Trash2 size={14} />
+                        </button>
+                    </div>
+                </div>
+            ))}
+
+            {showForm && (
+                <div className="admin-modal-overlay" onClick={resetForm}>
+                    <div className="admin-modal" onClick={(e) => e.stopPropagation()}>
+                        <h3 className="admin-modal-title">
+                            {editId ? "Edit Testimonial" : "Add Testimonial"}
+                        </h3>
+                        <div className="admin-field">
+                            <label>Customer Name</label>
+                            <input
+                                type="text"
+                                value={name}
+                                onChange={(e) => setName(e.target.value)}
+                                placeholder="Enter customer name"
+                            />
+                        </div>
+                        <div className="admin-field">
+                            <label>Testimonial Text</label>
+                            <textarea
+                                rows={4}
+                                value={text}
+                                onChange={(e) => setText(e.target.value)}
+                                placeholder="What did they say?"
+                            />
+                        </div>
+                        <div className="admin-field">
+                            <label>Rating (1-5 stars)</label>
+                            <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
+                                {[1, 2, 3, 4, 5].map((star) => (
+                                    <button
+                                        key={star}
+                                        type="button"
+                                        onClick={() => setRating(star)}
+                                        style={{
+                                            background: "none",
+                                            border: "none",
+                                            cursor: "pointer",
+                                            padding: 2,
+                                        }}
+                                    >
+                                        <Star
+                                            size={24}
+                                            fill={star <= rating ? "#F59E0B" : "none"}
+                                            color={star <= rating ? "#F59E0B" : "#d1d5db"}
+                                        />
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                        <div className="admin-modal-actions">
+                            <button className="admin-cancel-btn" onClick={resetForm}>Cancel</button>
+                            <button
+                                className="admin-save-btn"
+                                onClick={handleSave}
+                                disabled={!name || !text}
+                            >
+                                Save
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            <button className="admin-add-btn" onClick={() => setShowForm(true)}>
+                <Plus size={16} /> Add Testimonial
+            </button>
+        </div>
+    );
+}
+
 // ===== SETTINGS PANEL =====
 function SettingsPanel({ onSave }: { onSave: (msg?: string) => void }) {
     const settings = useQuery(api.siteSettings.get);
     const updateSettings = useMutation(api.siteSettings.update);
+    const adminPassword = useQuery(api.admin.getPassword);
+    const changePassword = useMutation(api.admin.changePassword);
     const [whatsappNumber, setWhatsappNumber] = useState("");
     const [footerText, setFooterText] = useState("");
     const [maintenanceMode, setMaintenanceMode] = useState(false);
+    const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+    const [currentPasswordInput, setCurrentPasswordInput] = useState("");
+    const [newPassword, setNewPassword] = useState("");
+    const [confirmPassword, setConfirmPassword] = useState("");
+    const [passwordError, setPasswordError] = useState("");
+    const [changingPassword, setChangingPassword] = useState(false);
 
     useEffect(() => {
         if (settings) {
@@ -1055,6 +1228,33 @@ function SettingsPanel({ onSave }: { onSave: (msg?: string) => void }) {
         setMaintenanceMode(newVal);
         await updateSettings({ maintenanceMode: newVal });
         onSave(newVal ? "Maintenance mode ON" : "Maintenance mode OFF");
+    };
+
+    const handleChangePassword = async () => {
+        setPasswordError("");
+        if (newPassword.length < 4) {
+            setPasswordError("New password must be at least 4 characters.");
+            return;
+        }
+        if (newPassword !== confirmPassword) {
+            setPasswordError("Passwords do not match.");
+            return;
+        }
+        setChangingPassword(true);
+        try {
+            await changePassword({
+                currentPassword: currentPasswordInput,
+                newPassword: newPassword,
+            });
+            setCurrentPasswordInput("");
+            setNewPassword("");
+            setConfirmPassword("");
+            onSave("Password changed successfully!");
+        } catch (err: any) {
+            setPasswordError(err?.message || "Failed to change password.");
+        } finally {
+            setChangingPassword(false);
+        }
     };
 
     return (
@@ -1100,6 +1300,96 @@ function SettingsPanel({ onSave }: { onSave: (msg?: string) => void }) {
                 <Save size={16} style={{ display: "inline", marginRight: 6 }} />
                 Save Settings
             </button>
+
+            {/* Password Section */}
+            <div style={{ marginTop: 32, paddingTop: 24, borderTop: "1px solid #e5e7eb" }}>
+                <h3 style={{ fontFamily: "var(--font-heading)", fontSize: 16, fontWeight: 600, marginBottom: 16, display: "flex", alignItems: "center", gap: 8 }}>
+                    <Key size={18} />
+                    Password Management
+                </h3>
+
+                {/* Current Password Display */}
+                <div className="admin-field">
+                    <label>Current Password</label>
+                    <div style={{ position: "relative" }}>
+                        <input
+                            type={showCurrentPassword ? "text" : "password"}
+                            value={adminPassword?.password || ""}
+                            readOnly
+                            style={{
+                                width: "100%",
+                                padding: "12px 44px 12px 16px",
+                                border: "2px solid #e5e7eb",
+                                borderRadius: 12,
+                                fontFamily: "var(--font-body)",
+                                fontSize: 14,
+                                background: "#f9fafb",
+                                color: "var(--color-text)",
+                            }}
+                        />
+                        <button
+                            type="button"
+                            onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                            style={{
+                                position: "absolute",
+                                right: 12,
+                                top: "50%",
+                                transform: "translateY(-50%)",
+                                background: "none",
+                                border: "none",
+                                cursor: "pointer",
+                                color: "#9ca3af",
+                                padding: 0,
+                            }}
+                        >
+                            {showCurrentPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                        </button>
+                    </div>
+                </div>
+
+                {/* Change Password Form */}
+                <div style={{ marginTop: 16, padding: 16, background: "#f9fafb", borderRadius: 14, border: "1px solid #e5e7eb" }}>
+                    <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 12 }}>Change Password</div>
+                    {passwordError && (
+                        <p style={{ color: "#ef4444", fontSize: 13, marginBottom: 12 }}>{passwordError}</p>
+                    )}
+                    <div className="admin-field">
+                        <label>Current Password</label>
+                        <input
+                            type="password"
+                            value={currentPasswordInput}
+                            onChange={(e) => setCurrentPasswordInput(e.target.value)}
+                            placeholder="Enter current password"
+                        />
+                    </div>
+                    <div className="admin-field">
+                        <label>New Password</label>
+                        <input
+                            type="password"
+                            value={newPassword}
+                            onChange={(e) => setNewPassword(e.target.value)}
+                            placeholder="Enter new password"
+                        />
+                    </div>
+                    <div className="admin-field">
+                        <label>Confirm New Password</label>
+                        <input
+                            type="password"
+                            value={confirmPassword}
+                            onChange={(e) => setConfirmPassword(e.target.value)}
+                            placeholder="Confirm new password"
+                        />
+                    </div>
+                    <button
+                        className="admin-save-btn"
+                        onClick={handleChangePassword}
+                        disabled={changingPassword || !currentPasswordInput || !newPassword || !confirmPassword}
+                    >
+                        <Key size={16} style={{ display: "inline", marginRight: 6 }} />
+                        {changingPassword ? "Changing..." : "Change Password"}
+                    </button>
+                </div>
+            </div>
         </div>
     );
 }

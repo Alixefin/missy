@@ -12,6 +12,7 @@ import RateCard from "@/components/RateCard";
 import ShopSection from "@/components/ShopSection";
 import ProductModal from "@/components/ProductModal";
 import Footer from "@/components/Footer";
+import TestimonialsSection from "@/components/TestimonialsSection";
 import MaintenancePage from "@/components/MaintenancePage";
 
 interface Product {
@@ -30,6 +31,7 @@ export default function HomePage() {
   const products = useQuery(api.products.list);
   const socialLinks = useQuery(api.socialLinks.list);
   const brands = useQuery(api.brands.list);
+  const testimonials = useQuery(api.testimonials.list);
   const initSettings = useMutation(api.siteSettings.initialize);
 
   const handleLoadingComplete = useCallback(() => {
@@ -40,14 +42,14 @@ export default function HomePage() {
     }
   }, [settings, initSettings]);
 
-  // Show loading screen
-  if (showLoading) {
-    return <LoadingScreen onComplete={handleLoadingComplete} loadingImageUrl={settings?.loadingImageUrl} />;
-  }
-
   // If data is still loading from Convex
   if (settings === undefined) {
-    return <LoadingScreen onComplete={() => { }} loadingImageUrl={undefined} />;
+    return <LoadingScreen onComplete={() => { }} isLoadingSettings={true} />;
+  }
+
+  // Show loading screen
+  if (showLoading) {
+    return <LoadingScreen onComplete={handleLoadingComplete} loadingImageUrl={settings?.loadingImageUrl} isLoadingSettings={false} />;
   }
 
   // Check maintenance mode
@@ -70,6 +72,8 @@ export default function HomePage() {
         <SocialLinks links={socialLinks || []} />
 
         <BrandsSection brands={brands || []} />
+
+        <TestimonialsSection testimonials={testimonials || []} />
 
         <RateCard
           title={settings?.rateCardTitle}

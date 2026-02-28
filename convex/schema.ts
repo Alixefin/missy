@@ -47,4 +47,16 @@ export default defineSchema({
     order: v.number(),
     isActive: v.boolean(),
   }),
+
+  testimonials: defineTable({
+    name: v.string(),
+    text: v.string(),
+    rating: v.optional(v.number()),
+    order: v.number(),
+    isActive: v.boolean(),
+  }),
+
+  adminConfig: defineTable({
+    password: v.string(),
+  }),
 });

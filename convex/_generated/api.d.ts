@@ -14,6 +14,7 @@ import type * as migrateCurrency from "../migrateCurrency.js";
 import type * as products from "../products.js";
 import type * as siteSettings from "../siteSettings.js";
 import type * as socialLinks from "../socialLinks.js";
+import type * as testimonials from "../testimonials.js";
 
 import type {
   ApiFromModules,
@@ -28,6 +29,7 @@ declare const fullApi: ApiFromModules<{
   products: typeof products;
   siteSettings: typeof siteSettings;
   socialLinks: typeof socialLinks;
+  testimonials: typeof testimonials;
 }>;
 
 /**

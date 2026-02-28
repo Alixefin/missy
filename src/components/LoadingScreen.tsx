@@ -4,16 +4,27 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useEffect, useState } from "react";
 import Image from "next/image";
 
-export default function LoadingScreen({ onComplete, loadingImageUrl }: { onComplete: () => void, loadingImageUrl?: string }) {
+export default function LoadingScreen({
+    onComplete,
+    loadingImageUrl,
+    isLoadingSettings = false
+}: {
+    onComplete: () => void,
+    loadingImageUrl?: string,
+    isLoadingSettings?: boolean
+}) {
     const [isVisible, setIsVisible] = useState(true);
 
     useEffect(() => {
+        // Only start the 3-second timer once settings have finished loading
+        if (isLoadingSettings) return;
+
         const timer = setTimeout(() => {
             setIsVisible(false);
             setTimeout(onComplete, 500); // Wait for exit animation
         }, 3000);
         return () => clearTimeout(timer);
-    }, [onComplete]);
+    }, [onComplete, isLoadingSettings]);
 
     return (
         <AnimatePresence>
@@ -31,15 +42,22 @@ export default function LoadingScreen({ onComplete, loadingImageUrl }: { onCompl
                         animate={{ scale: 1, opacity: 1 }}
                         transition={{ duration: 0.6, ease: "easeOut" }}
                     >
-                        <Image
-                            src={loadingImageUrl || "/logo.svg"}
-                            alt="Missy Logo"
-                            width={120}
-                            height={120}
-                            className="loading-logo"
-                            priority
-                            style={{ objectFit: 'contain', width: 'auto', height: '120px', borderRadius: 0, zIndex: 1 }}
-                        />
+                        {!isLoadingSettings && (
+                            <motion.div
+                                animate={{ scale: [1, 1.15, 1] }}
+                                transition={{ repeat: Infinity, duration: 1.5, ease: "easeInOut" }}
+                            >
+                                <Image
+                                    src={loadingImageUrl || "/logo.svg"}
+                                    alt="Missy Logo"
+                                    width={120}
+                                    height={120}
+                                    className="loading-logo"
+                                    priority
+                                    style={{ objectFit: 'contain', width: 'auto', height: '120px', borderRadius: 0, zIndex: 1 }}
+                                />
+                            </motion.div>
+                        )}
                         <div style={{ position: 'relative', width: '40px', height: '40px' }}>
                             <div className="loading-spinner" />
                             <div className="loading-spinner-inner" style={{ inset: '6px' }} />

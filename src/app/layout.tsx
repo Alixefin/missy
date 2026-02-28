@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { ConvexClientProvider } from "@/components/ConvexClientProvider";
+import DynamicFavicon from "@/components/DynamicFavicon";
 
 export const metadata: Metadata = {
   title: "Missy | Skincare Influencer & Beauty Expert",
@@ -22,7 +23,10 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <ConvexClientProvider>{children}</ConvexClientProvider>
+        <ConvexClientProvider>
+          <DynamicFavicon />
+          {children}
+        </ConvexClientProvider>
       </body>
     </html>
   );

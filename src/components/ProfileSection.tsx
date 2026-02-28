@@ -29,8 +29,8 @@ export default function ProfileSection({
                     <Image
                         src={profileImageUrl}
                         alt={brandName}
-                        width={110}
-                        height={110}
+                        width={160}
+                        height={160}
                         className="profile-image"
                         priority
                     />
@@ -43,7 +43,7 @@ export default function ProfileSection({
                             justifyContent: "center",
                             background: "linear-gradient(135deg, #E8707A, #D4565F)",
                             color: "white",
-                            fontSize: "42px",
+                            fontSize: "56px",
                             fontFamily: "var(--font-heading)",
                             fontWeight: 700,
                         }}
